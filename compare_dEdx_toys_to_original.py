@@ -70,13 +70,13 @@ for mu_status in ["IsMu","IsNotMu"] :
       ranges = rangemap[distribution]
 
       # Compare template and generated
-      myPainter.drawManyOverlaidHistograms(hist_list,name_list,plotnameval,"A.U.",outname,ranges[0],ranges[1],"automatic","automatic",doLogX=False,doLogY=False,doLegendLow=False,doATLASLabel="None",extraLegendLines=extraLegendLines)
+      myPainter.drawManyOverlaidHistograms(hist_list,name_list,plotnameval,"A.U.",outname,ranges[0],ranges[1],"automatic","automatic",doLogX=False,doLogY=True,doLegendLow=False,doATLASLabel="None",extraLegendLines=extraLegendLines)
 
       hist_list = [hist_pControl,hist_dEdxControl,hist_generated]
       name_list = ["p-control region","dEdx control region","Generated"]
 
       # Compare both control regions to generated
-      myPainter.drawManyOverlaidHistograms(hist_list,name_list,plotnameval,"A.U.",outname+"_allRegions",ranges[0],ranges[1],"automatic","automatic",doLogX=False,doLogY=False,doLegendLow=False,doATLASLabel="None",extraLegendLines=extraLegendLines)
+      myPainter.drawManyOverlaidHistograms(hist_list,name_list,plotnameval,"A.U.",outname+"_allRegions",ranges[0],ranges[1],"automatic","automatic",doLogX=False,doLogY=True,doLegendLow=False,doATLASLabel="None",extraLegendLines=extraLegendLines)
 
 open_file.Close()
 
