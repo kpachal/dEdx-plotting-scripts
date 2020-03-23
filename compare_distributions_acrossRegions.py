@@ -1,6 +1,10 @@
 from art.morisot import Morisot
 import glob
 import ROOT
+from analysisScripts.generalfunctions import *
+
+## Every 1D plot for the same analysis selection, compared 
+## between the different control regions, normalised to unity and overlaid.
 
 # Initialize painter
 myPainter = Morisot()
@@ -8,84 +12,83 @@ myPainter.setColourPalette("notSynthwave")
 myPainter.setLabelType(4) # Sets label type i.e. Internal, Work in progress etc.
                           # See below for label explanation
 
-file = "../run/histograms_stable.root"
-open_file = ROOT.TFile.Open(file,"READ")
-hist5 = open_file.Get("Background_dEdxControl_Nominal_MuInclusive/dEdx_p150_p250")
-hist6 = open_file.Get("Background_dEdxControl_Nominal_MuInclusive/dEdx_p250_inf")
+tag = "20p7_"
 
-hist7 = open_file.Get("Background_pControl_Nominal_MuInclusive/p")
+plotsDir = "plots_compareAcrossRegions/"
+#filename = "../run/histograms_complex_all1.8_{0}.root"
+filename = "../run/histograms_release20.7_{0}.root"
 
-fine_bin_dict = {}
-for p_string in ["none","p150_p250","p250_inf"] :
-  fine_bin_dict[p_string] = {}
-  for eta_string in ["below_eta0p10","eta0p10_eta1p00","eta1p00_eta1p50","eta1p50_eta1p75","eta1p75_eta2p00"] :
-    if p_string == "none" :
-      name = "Background_dEdxControl_Nominal_MuInclusive/dEdx_{0}".format(eta_string)
-    else :
-      name = "Background_dEdxControl_Nominal_MuInclusive/dEdx_{0}_{1}".format(p_string,eta_string)
-    print "Fetching",name,"..."
-    hist = open_file.Get(name)
-    hist.SetDirectory(0)  
-    fine_bin_dict[p_string][eta_string] = hist
+regions = ["Background_dEdxControl","Background_pControl","SignalRegion"]
+map_plot_name_type = {}
 
+for analysis in ["stable","metastable"] :
 
-for p_string in ["none","p150_p250","p250_inf"] :
+  print "Beginning analysis of",analysis,"histograms."
 
-  hist_list = []
-  name_list = []
-  for eta_string in ["below_eta0p10","eta0p10_eta1p00","eta1p00_eta1p50","eta1p50_eta1p75","eta1p75_eta2p00"] :
-    hist = fine_bin_dict[p_string][eta_string]
+  infile = ROOT.TFile.Open(filename.format(analysis),"READ")
+  keys = infile.GetKeyNames("Validation/")  
 
-    # Normalize
-    hist.Scale(1.0/hist.Integral())
+  # Loop over each region+analysis selection and get histograms
+  hist_storage = {}
+  for [keyname,keytype] in keys :
 
-    hist_list.append(hist)
-    name_string = hist.GetName()
-    name_tokens = name_string.split("_")
-    eta_tokens = [name_tokens[-2],name_tokens[-1]]
-    name_new = "{0} < #eta < {1}"
-    for token in eta_tokens :
-      index = eta_tokens.index(token)
-      token = token.replace("eta","")
-      token = token.replace("p",".")
-      eta_tokens[index] = token
-    name_new = name_new.format(eta_tokens[0],eta_tokens[1])
-    name_list.append(name_new)
+    if not "TDirectory" in keytype : continue
 
-  outname = "plots/eta_comparison_dEdx"
-  if "none" not in p_string :
-    outname = outname + "_"+p_string
+    # Region name and analysis bin name
+    for region_option in regions :
+      if region_option in keyname :
+        region_name = region_option
+        bin_name = keyname.replace(region_option+"_","")
 
-  myPainter.drawManyOverlaidHistograms(hist_list,name_list,"dE/dx","A.U.",outname,0.5,2.5,"automatic","automatic",doLogX=False,doLogY=False,doLegendLow=False,doATLASLabel="None")
-  myPainter.drawManyOverlaidHistograms(hist_list,name_list,"dE/dx","A.U.",outname+"_log",0.5,2.5,"automatic","automatic",doLogX=False,doLogY=True,doLegendLow=False,doATLASLabel="None")
+    print "Got region name and bin name",region_name,bin_name
 
-hist_list = []
-name_list = []
-for hist in [hist5, hist6] :
-  hist.SetDirectory(0)
+    # Make location in hist_storage for this analysis bin
+    if not bin_name in hist_storage.keys() :
+      hist_storage[bin_name] = {}
 
-  # Normalize
-  hist.Scale(1.0/hist.Integral())
+    # Make sub-dictionary for each plot existing in the region
+    plots_list = infile.GetKeyNames("Validation/{0}".format(keyname))
+    for [plotname,plottype] in plots_list :
 
-  hist_list.append(hist)
-  name_string = hist.GetName()  
-  name_tokens = name_string.split("_")
-  p_tokens = [name_tokens[-2],name_tokens[-1]]
-  name_new = "{0} < momentum [GeV] < {1}"  
-  for token in p_tokens :
-    index = p_tokens.index(token)
-    token = token.replace("p","")
-    p_tokens[index] = token
-  name_new = name_new.format(p_tokens[0],p_tokens[1])
-  name_list.append(name_new)
+      if not plotname in hist_storage[bin_name].keys() :
+        hist_storage[bin_name][plotname] = {}
 
-myPainter.drawManyOverlaidHistograms(hist_list,name_list,"dE/dx","A.U.","plots/p_comparison_dEdx",0.5,2.5,"automatic","automatic",doLogX=False,doLogY=False,doLegendLow=False,doATLASLabel="None")
-myPainter.drawManyOverlaidHistograms(hist_list,name_list,"dE/dx","A.U.","plots/p_comparison_dEdx_log",0.5,2.5,"automatic","automatic",doLogX=False,doLogY=True,doLegendLow=False,doATLASLabel="None")
+      store_name = plotname.replace("Validation_{0}_{1}_".format(region_name,bin_name),"")
 
-hist7.SetDirectory(0)
-hist7.Scale(1.0/hist7.Integral())
-myPainter.drawManyOverlaidHistograms([hist7],["Momentum from high-MET CR"],"Momentum [GeV]","A.U.","plots/p",-1000,1000,"automatic","automatic",doLogX=False,doLogY=False,doLegendLow=False,doATLASLabel="None")
-myPainter.drawManyOverlaidHistograms([hist7],["Momentum from high-MET CR"],"Momentum [GeV]","A.U.","plots/p_log",-1000,1000,"automatic","automatic",doLogX=False,doLogY=True,doLegendLow=False,doATLASLabel="None")
+      # Time to get the plot and store with appropriate label
+      hist = infile.Get("Validation/{0}/{1}".format(keyname,plotname))
+      hist.SetDirectory(0)
+      hist_storage[bin_name][store_name][region_name] = hist
 
-open_file.Close()
+      # And note what type this plot is for later
+      map_plot_name_type[store_name] = plottype
+
+  # Drawing time!
+  for bin_name in hist_storage.keys() :
+
+    print "Making overlaid plots for bin",bin_name
+
+    for plot in hist_storage[bin_name].keys() :
+
+      if "TH1" in map_plot_name_type[plot] :
+
+        histsToDraw = hist_storage[bin_name][plot]
+
+        histList = []
+        labelList = []
+        for region_name in histsToDraw.keys() :
+          if "Signal" in region_name : continue
+          thishist = histsToDraw[region_name]
+          if thishist.Integral() != 0 :
+            thishist.Scale(1.0/thishist.Integral())
+          histList.append(thishist)
+          labelList.append(region_name)
+
+        plotName = plotsDir+"/{3}{0}_{1}_{2}".format(analysis,bin_name,plot,tag)
+        myPainter.drawManyOverlaidHistograms(histList,labelList,plot,"A.U.",plotName,"automatic","automatic","automatic","automatic",doLogX=False,doLogY=False,doLegendLow=False,doATLASLabel="None")
+
+      else :
+        print "TH2, currently skipping"
+
+  infile.Close()
 
